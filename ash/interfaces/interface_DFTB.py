@@ -14,7 +14,7 @@ class DFTBTheory():
     def __init__(self, dftbdir=None, hamiltonian="XTB", xtb_method="GFN2-xTB", printlevel=2, label="DFTB",
                  numcores=1, slaterkoster_dict=None, maxmom_dict=None, hubbard_derivs_dict=None, Gauss_blur_width=0.0,
                  SCC=True, ThirdOrderFull=False, ThirdOrder=False, hcorrection_zeta=None,
-                 MaxSCCIterations=300):
+                 MaxSCCIterations=300, dispersion=None, dispersion_params=None):
 
         self.theorynamelabel="DFTB"
         self.label=label
@@ -50,6 +50,19 @@ class DFTBTheory():
         # Third-order
         self.ThirdOrderFull=ThirdOrderFull
         self.ThirdOrder=ThirdOrder
+
+        # Dispersion correction
+        self.dispersion=dispersion
+        self.dispersion_params=dispersion_params
+        if self.dispersion is not None:
+            valid_dispersion = ["SlaterKirkwood", "LennardJones", "DFTD3", "SimpleDFTD3", "DFTD4", "TS", "MBD"]
+            if self.dispersion.upper() not in [d.upper() for d in valid_dispersion]:
+                print(f"Error: Unknown dispersion method: {self.dispersion}")
+                print(f"Valid options: {valid_dispersion}")
+                ashexit()
+            print(f"Dispersion correction: {self.dispersion}")
+            if self.dispersion_params is not None:
+                print(f"Dispersion parameters: {self.dispersion_params}")
 
 
         if maxmom_dict is None:
@@ -143,7 +156,7 @@ class DFTBTheory():
                          slaterkoster_dict=self.slaterkoster_dict, maxmom_dict=self.maxmom_dict, MMcharges=MMcharges, MMcoords=current_MM_coords,
                          Gauss_blur_width=self.Gauss_blur_width, SCC=self.SCC, ThirdOrderFull=self.ThirdOrderFull, ThirdOrder=self.ThirdOrder,
                          hubbard_derivs_dict=self.hubbard_derivs_dict, hcorrection_zeta=self.hcorrection_zeta,
-                         MaxSCCIterations=self.MaxSCCIterations)
+                         MaxSCCIterations=self.MaxSCCIterations, dispersion=self.dispersion, dispersion_params=self.dispersion_params)
 
         print_time_rel(module_init_time, modulename=f'DFTB prep-run', moduleindex=3)
         # Run DFTB
@@ -180,7 +193,7 @@ class DFTBTheory():
 #
 def write_DFTB_input(hamiltonian,xtbmethod,xyzfilename, elems,coords,charge,mult, PC=False, MMcharges=None, MMcoords=None, Grad=False, SCC=True,
                      slaterkoster_dict=None, maxmom_dict=None, Gauss_blur_width=0.0, ThirdOrderFull=False, ThirdOrder=False,
-                     hubbard_derivs_dict=None, hcorrection_zeta=None, MaxSCCIterations=300):
+                     hubbard_derivs_dict=None, hcorrection_zeta=None, MaxSCCIterations=300, dispersion=None, dispersion_params=None):
 
     # Open file
     f = open("dftb_in.hsd", "w")
@@ -252,6 +265,38 @@ def write_DFTB_input(hamiltonian,xtbmethod,xyzfilename, elems,coords,charge,mult
         for el in list(set(elems)):
             inputlines.append(f'    {el} = "{maxmom_dict[el]}"\n')
         inputlines.append('  }\n')
+
+        # Dispersion correction
+        if dispersion is not None:
+            disp_upper = dispersion.upper()
+            if disp_upper == "SLATERKIRKWOOD":
+                inputlines.append('  Dispersion = SlaterKirkwood {\n')
+            elif disp_upper == "LENNARDJONES":
+                inputlines.append('  Dispersion = LennardJones {\n')
+            elif disp_upper == "DFTD3":
+                inputlines.append('  Dispersion = DFTD3 {\n')
+            elif disp_upper == "SIMPLEDFTD3":
+                inputlines.append('  Dispersion = SimpleDFTD3 {\n')
+            elif disp_upper == "DFTD4":
+                inputlines.append('  Dispersion = DFTD4 {\n')
+            elif disp_upper == "TS":
+                inputlines.append('  Dispersion = TS {\n')
+            elif disp_upper == "MBD":
+                inputlines.append('  Dispersion = MBD {\n')
+            # Add custom parameters if provided
+            if dispersion_params is not None:
+                for k, v in dispersion_params.items():
+                    if isinstance(v, dict):
+                        # Nested block (e.g. Damping = BeckeJohnson { a1 = ... })
+                        block_type = v.get('type', '')
+                        inputlines.append(f'    {k} = {block_type} {{\n')
+                        for nk, nv in v.items():
+                            if nk != 'type':
+                                inputlines.append(f'      {nk} = {nv}\n')
+                        inputlines.append('    }\n')
+                    else:
+                        inputlines.append(f'    {k} = {v}\n')
+            inputlines.append('  }\n')
 
         inputlines.append('}\n')
 
