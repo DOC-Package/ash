@@ -14,7 +14,8 @@ class DFTBTheory():
     def __init__(self, dftbdir=None, hamiltonian="XTB", xtb_method="GFN2-xTB", printlevel=2, label="DFTB",
                  numcores=1, slaterkoster_dict=None, maxmom_dict=None, hubbard_derivs_dict=None, Gauss_blur_width=0.0,
                  SCC=True, ThirdOrderFull=False, ThirdOrder=False, hcorrection_zeta=None,
-                 MaxSCCIterations=300, dispersion=None, dispersion_params=None):
+                 MaxSCCIterations=300, dispersion=None, dispersion_params=None,
+                 range_separated=None):
 
         self.theorynamelabel="DFTB"
         self.label=label
@@ -50,6 +51,16 @@ class DFTBTheory():
         # Third-order
         self.ThirdOrderFull=ThirdOrderFull
         self.ThirdOrder=ThirdOrder
+
+        # Range-separated (LC-DFTB) settings
+        # Pass a dict to enable, e.g.
+        #   {'method': 'LC',
+        #    'screening': 'NeighbourBased',
+        #    'screening_params': {'CutoffReduction [Bohr]': 0.0},
+        #    'options': {}}
+        self.range_separated = range_separated
+        if self.range_separated is not None:
+            print(f"Range-separated (LC-DFTB) enabled: {self.range_separated}")
 
         # Dispersion correction
         self.dispersion=dispersion
@@ -156,7 +167,8 @@ class DFTBTheory():
                          slaterkoster_dict=self.slaterkoster_dict, maxmom_dict=self.maxmom_dict, MMcharges=MMcharges, MMcoords=current_MM_coords,
                          Gauss_blur_width=self.Gauss_blur_width, SCC=self.SCC, ThirdOrderFull=self.ThirdOrderFull, ThirdOrder=self.ThirdOrder,
                          hubbard_derivs_dict=self.hubbard_derivs_dict, hcorrection_zeta=self.hcorrection_zeta,
-                         MaxSCCIterations=self.MaxSCCIterations, dispersion=self.dispersion, dispersion_params=self.dispersion_params)
+                         MaxSCCIterations=self.MaxSCCIterations, dispersion=self.dispersion, dispersion_params=self.dispersion_params,
+                         range_separated=self.range_separated)
 
         print_time_rel(module_init_time, modulename=f'DFTB prep-run', moduleindex=3)
         # Run DFTB
@@ -193,7 +205,8 @@ class DFTBTheory():
 #
 def write_DFTB_input(hamiltonian,xtbmethod,xyzfilename, elems,coords,charge,mult, PC=False, MMcharges=None, MMcoords=None, Grad=False, SCC=True,
                      slaterkoster_dict=None, maxmom_dict=None, Gauss_blur_width=0.0, ThirdOrderFull=False, ThirdOrder=False,
-                     hubbard_derivs_dict=None, hcorrection_zeta=None, MaxSCCIterations=300, dispersion=None, dispersion_params=None):
+                     hubbard_derivs_dict=None, hcorrection_zeta=None, MaxSCCIterations=300, dispersion=None, dispersion_params=None,
+                     range_separated=None):
 
     # Open file
     f = open("dftb_in.hsd", "w")
@@ -296,6 +309,20 @@ def write_DFTB_input(hamiltonian,xtbmethod,xyzfilename, elems,coords,charge,mult
                         inputlines.append('    }\n')
                     else:
                         inputlines.append(f'    {k} = {v}\n')
+            inputlines.append('  }\n')
+
+        # Range-separated (LC-DFTB)
+        if range_separated is not None:
+            method = range_separated.get('method', 'LC')
+            inputlines.append(f'  RangeSeparated = {method} {{\n')
+            screening = range_separated.get('screening', 'NeighbourBased')
+            screening_params = range_separated.get('screening_params') or {}
+            inputlines.append(f'    Screening = {screening} {{\n')
+            for k, v in screening_params.items():
+                inputlines.append(f'      {k} = {v}\n')
+            inputlines.append('    }\n')
+            for k, v in (range_separated.get('options') or {}).items():
+                inputlines.append(f'    {k} = {v}\n')
             inputlines.append('  }\n')
 
         inputlines.append('}\n')
