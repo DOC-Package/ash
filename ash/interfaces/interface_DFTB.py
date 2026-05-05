@@ -15,7 +15,8 @@ class DFTBTheory():
                  numcores=1, slaterkoster_dict=None, maxmom_dict=None, hubbard_derivs_dict=None, Gauss_blur_width=0.0,
                  SCC=True, ThirdOrderFull=False, ThirdOrder=False, hcorrection_zeta=None,
                  MaxSCCIterations=300, dispersion=None, dispersion_params=None,
-                 range_separated=None):
+                 range_separated=None, mixer=None, filling=None,
+                 read_initial_charges=False):
 
         self.theorynamelabel="DFTB"
         self.label=label
@@ -61,6 +62,28 @@ class DFTBTheory():
         self.range_separated = range_separated
         if self.range_separated is not None:
             print(f"Range-separated (LC-DFTB) enabled: {self.range_separated}")
+
+        # SCC mixer settings.
+        # Pass a dict, e.g.
+        #   {'method': 'Broyden', 'params': {'MixingParameter': 0.05}}
+        #   {'method': 'Anderson',
+        #    'params': {'MixingParameter': 0.05, 'Generations': 6}}
+        self.mixer = mixer
+        if self.mixer is not None:
+            print(f"SCC mixer: {self.mixer}")
+
+        # Filling (electron occupation) settings.
+        # Pass a dict, e.g.
+        #   {'method': 'Fermi', 'params': {'Temperature [K]': 1000}}
+        #   {'method': 'MethfesselPaxton', 'params': {'Temperature [K]': 500, 'Order': 2}}
+        self.filling = filling
+        if self.filling is not None:
+            print(f"Filling: {self.filling}")
+
+        # Reuse SCC charges across calls (reads charges.bin if present).
+        self.read_initial_charges = read_initial_charges
+        if self.read_initial_charges:
+            print("ReadInitialCharges enabled: will reuse charges.bin from previous step if present.")
 
         # Dispersion correction
         self.dispersion=dispersion
@@ -168,7 +191,8 @@ class DFTBTheory():
                          Gauss_blur_width=self.Gauss_blur_width, SCC=self.SCC, ThirdOrderFull=self.ThirdOrderFull, ThirdOrder=self.ThirdOrder,
                          hubbard_derivs_dict=self.hubbard_derivs_dict, hcorrection_zeta=self.hcorrection_zeta,
                          MaxSCCIterations=self.MaxSCCIterations, dispersion=self.dispersion, dispersion_params=self.dispersion_params,
-                         range_separated=self.range_separated)
+                         range_separated=self.range_separated, mixer=self.mixer, filling=self.filling,
+                         read_initial_charges=self.read_initial_charges)
 
         print_time_rel(module_init_time, modulename=f'DFTB prep-run', moduleindex=3)
         # Run DFTB
@@ -206,7 +230,8 @@ class DFTBTheory():
 def write_DFTB_input(hamiltonian,xtbmethod,xyzfilename, elems,coords,charge,mult, PC=False, MMcharges=None, MMcoords=None, Grad=False, SCC=True,
                      slaterkoster_dict=None, maxmom_dict=None, Gauss_blur_width=0.0, ThirdOrderFull=False, ThirdOrder=False,
                      hubbard_derivs_dict=None, hcorrection_zeta=None, MaxSCCIterations=300, dispersion=None, dispersion_params=None,
-                     range_separated=None):
+                     range_separated=None, mixer=None, filling=None,
+                     read_initial_charges=False):
 
     # Open file
     f = open("dftb_in.hsd", "w")
@@ -324,6 +349,28 @@ def write_DFTB_input(hamiltonian,xtbmethod,xyzfilename, elems,coords,charge,mult
             for k, v in (range_separated.get('options') or {}).items():
                 inputlines.append(f'    {k} = {v}\n')
             inputlines.append('  }\n')
+
+        # SCC mixer
+        if mixer is not None:
+            method = mixer.get('method', 'Broyden')
+            inputlines.append(f'  Mixer = {method} {{\n')
+            for k, v in (mixer.get('params') or {}).items():
+                inputlines.append(f'    {k} = {v}\n')
+            inputlines.append('  }\n')
+
+        # Filling (electron occupation / smearing)
+        if filling is not None:
+            method = filling.get('method', 'Fermi')
+            inputlines.append(f'  Filling = {method} {{\n')
+            for k, v in (filling.get('params') or {}).items():
+                inputlines.append(f'    {k} = {v}\n')
+            inputlines.append('  }\n')
+
+        # Reuse SCC charges across calls
+        if read_initial_charges:
+            import os as _os
+            if _os.path.exists('charges.bin'):
+                inputlines.append('  ReadInitialCharges = Yes\n')
 
         inputlines.append('}\n')
 
