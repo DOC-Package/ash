@@ -14,7 +14,7 @@ class DFTBTheory():
     def __init__(self, dftbdir=None, hamiltonian="XTB", xtb_method="GFN2-xTB", printlevel=2, label="DFTB",
                  numcores=1, slaterkoster_dict=None, maxmom_dict=None, hubbard_derivs_dict=None, Gauss_blur_width=0.0,
                  SCC=True, ThirdOrderFull=False, ThirdOrder=False, hcorrection_zeta=None,
-                 MaxSCCIterations=300, dispersion=None, dispersion_params=None,
+                 MaxSCCIterations=300, SCCTolerance=None, dispersion=None, dispersion_params=None,
                  range_separated=None, mixer=None, filling=None,
                  read_initial_charges=False):
 
@@ -48,6 +48,8 @@ class DFTBTheory():
         self.SCC=SCC
         # SCC max iterations
         self.MaxSCCIterations=MaxSCCIterations
+        # SCC convergence tolerance
+        self.SCCTolerance=SCCTolerance
 
         # Third-order
         self.ThirdOrderFull=ThirdOrderFull
@@ -190,7 +192,8 @@ class DFTBTheory():
                          slaterkoster_dict=self.slaterkoster_dict, maxmom_dict=self.maxmom_dict, MMcharges=MMcharges, MMcoords=current_MM_coords,
                          Gauss_blur_width=self.Gauss_blur_width, SCC=self.SCC, ThirdOrderFull=self.ThirdOrderFull, ThirdOrder=self.ThirdOrder,
                          hubbard_derivs_dict=self.hubbard_derivs_dict, hcorrection_zeta=self.hcorrection_zeta,
-                         MaxSCCIterations=self.MaxSCCIterations, dispersion=self.dispersion, dispersion_params=self.dispersion_params,
+                         MaxSCCIterations=self.MaxSCCIterations, SCCTolerance=self.SCCTolerance,
+                         dispersion=self.dispersion, dispersion_params=self.dispersion_params,
                          range_separated=self.range_separated, mixer=self.mixer, filling=self.filling,
                          read_initial_charges=self.read_initial_charges)
 
@@ -229,7 +232,8 @@ class DFTBTheory():
 #
 def write_DFTB_input(hamiltonian,xtbmethod,xyzfilename, elems,coords,charge,mult, PC=False, MMcharges=None, MMcoords=None, Grad=False, SCC=True,
                      slaterkoster_dict=None, maxmom_dict=None, Gauss_blur_width=0.0, ThirdOrderFull=False, ThirdOrder=False,
-                     hubbard_derivs_dict=None, hcorrection_zeta=None, MaxSCCIterations=300, dispersion=None, dispersion_params=None,
+                     hubbard_derivs_dict=None, hcorrection_zeta=None, MaxSCCIterations=300, SCCTolerance=None,
+                     dispersion=None, dispersion_params=None,
                      range_separated=None, mixer=None, filling=None,
                      read_initial_charges=False):
 
@@ -286,6 +290,8 @@ def write_DFTB_input(hamiltonian,xtbmethod,xyzfilename, elems,coords,charge,mult
             ThirdOrderkeyword="No"
         inputlines.append(f"  Scc = {SCCkeyword}"+'\n')
         inputlines.append(f"  MaxSCCIterations = {MaxSCCIterations}\n")
+        if SCCTolerance is not None:
+            inputlines.append(f"  SCCTolerance = {SCCTolerance}\n")
         inputlines.append(f"  ThirdOrderFull = {ThirdOrderFullkeyword}"+'\n')
         inputlines.append(f"  ThirdOrder = {ThirdOrderkeyword}"+'\n')
         if hubbard_derivs_dict is not None:
