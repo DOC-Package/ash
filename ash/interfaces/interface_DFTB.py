@@ -15,9 +15,8 @@ class DFTBTheory():
     def __init__(self, dftbdir=None, hamiltonian="XTB", xtb_method="GFN2-xTB", printlevel=2, label="DFTB",
                  numcores=1, slaterkoster_dict=None, maxmom_dict=None, hubbard_derivs_dict=None, Gauss_blur_width=0.0,
                  SCC=True, ThirdOrderFull=False, ThirdOrder=False, hcorrection_zeta=None,
-                 MaxSCCIterations=300, periodic=False, periodic_cell_vectors=None,
-                 periodic_cell_dimensions=None, kpoint_values=[1,1,1],
-                 SCCTolerance=None, dispersion=None, dispersion_params=None,
+                 MaxSCCIterations=300, SCCTolerance=None, periodic=False, periodic_cell_vectors=None,
+                 periodic_cell_dimensions=None, kpoint_values=[1,1,1], dispersion=None, dispersion_params=None,
                  range_separated=None, mixer=None, filling=None,
                  read_initial_charges=False):
 
