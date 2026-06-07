@@ -17,7 +17,7 @@ class DFTBTheory():
                  SCC=True, ThirdOrderFull=False, ThirdOrder=False, hcorrection_zeta=None,
                  MaxSCCIterations=300, SCCTolerance=None, periodic=False, periodic_cell_vectors=None,
                  periodic_cell_dimensions=None, kpoint_values=[1,1,1], dispersion=None, dispersion_params=None,
-                 range_separated=None, mixer=None, filling=None,
+                 range_separated=None, hybrid=None, mixer=None, filling=None,
                  read_initial_charges=False):
 
         self.theorynamelabel="DFTB"
@@ -66,6 +66,14 @@ class DFTBTheory():
         self.range_separated = range_separated
         if self.range_separated is not None:
             print(f"Range-separated (LC-DFTB) enabled: {self.range_separated}")
+
+        # Hybrid functional settings.
+        # Pass a dict, e.g.
+        #   {'method': 'LC', 'params': {'Screening': {'method': 'MatrixBased'}}}
+        # or {'method': 'CAM', 'params': {...}}
+        self.hybrid = hybrid
+        if self.hybrid is not None:
+            print(f"Hybrid functional settings: {self.hybrid}")
 
         # SCC mixer settings.
         # Pass a dict, e.g.
@@ -229,7 +237,8 @@ class DFTBTheory():
                          hubbard_derivs_dict=self.hubbard_derivs_dict, hcorrection_zeta=self.hcorrection_zeta,
                          MaxSCCIterations=self.MaxSCCIterations, SCCTolerance=self.SCCTolerance,
                          dispersion=self.dispersion, dispersion_params=self.dispersion_params,
-                         range_separated=self.range_separated, mixer=self.mixer, filling=self.filling,
+                         range_separated=self.range_separated, hybrid=self.hybrid,
+                         mixer=self.mixer, filling=self.filling,
                          read_initial_charges=self.read_initial_charges,
                          periodic=self.periodic, periodic_cell_vectors=self.periodic_cell_vectors,
                          kpoint_values=self.kpoint_values)
@@ -271,11 +280,60 @@ class DFTBTheory():
             print_time_rel(module_init_time, modulename=f'{self.theorynamelabel} run', moduleindex=2)
             return self.energy
 #
+def _format_hsd_value(value):
+    if isinstance(value, bool):
+        return "Yes" if value else "No"
+    if isinstance(value, str):
+        stripped = value.strip()
+        if stripped.startswith(("'", '"')) and stripped.endswith(("'", '"')):
+            return value
+        return value
+    return str(value)
+
+
+def _append_hsd_entry(inputlines, indent, key, value):
+    if value is None:
+        inputlines.append(f"{indent}{key} = None {{\n")
+        inputlines.append(f"{indent}}}\n")
+        return
+
+    if isinstance(value, dict):
+        typed_name = None
+        typed_params = None
+
+        if "method" in value:
+            typed_name = value["method"]
+            typed_params = value.get("params", {})
+        elif "type" in value:
+            typed_name = value["type"]
+            typed_params = {k: v for k, v in value.items() if k != "type"}
+        elif len(value) == 1:
+            sole_key, sole_value = next(iter(value.items()))
+            if isinstance(sole_value, dict):
+                typed_name = sole_key
+                typed_params = sole_value
+
+        if typed_name is not None:
+            inputlines.append(f"{indent}{key} = {typed_name} {{\n")
+            for subkey, subvalue in (typed_params or {}).items():
+                _append_hsd_entry(inputlines, indent + "  ", subkey, subvalue)
+            inputlines.append(f"{indent}}}\n")
+            return
+
+        inputlines.append(f"{indent}{key} = {{\n")
+        for subkey, subvalue in value.items():
+            _append_hsd_entry(inputlines, indent + "  ", subkey, subvalue)
+        inputlines.append(f"{indent}}}\n")
+        return
+
+    inputlines.append(f"{indent}{key} = {_format_hsd_value(value)}\n")
+
+
 def write_DFTB_input(hamiltonian,xtbmethod,xyzfilename, elems,coords,charge,mult, PC=False, MMcharges=None, MMcoords=None, Grad=False, SCC=True,
                      slaterkoster_dict=None, maxmom_dict=None, Gauss_blur_width=0.0, ThirdOrderFull=False, ThirdOrder=False,
                      hubbard_derivs_dict=None, hcorrection_zeta=None, MaxSCCIterations=300, SCCTolerance=None,
                      dispersion=None, dispersion_params=None,
-                     range_separated=None, mixer=None, filling=None,
+                     range_separated=None, hybrid=None, mixer=None, filling=None,
                      read_initial_charges=False,
                      periodic=False, periodic_cell_vectors=None, kpoint_values=[1,1,1]):
 
@@ -437,6 +495,10 @@ def write_DFTB_input(hamiltonian,xtbmethod,xyzfilename, elems,coords,charge,mult
             for k, v in (range_separated.get('options') or {}).items():
                 inputlines.append(f'    {k} = {v}\n')
             inputlines.append('  }\n')
+
+        # Hybrid functional block (general DFTB+ Hybrid syntax)
+        if hybrid is not None:
+            _append_hsd_entry(inputlines, '  ', 'Hybrid', hybrid)
 
         # SCC mixer
         if mixer is not None:
