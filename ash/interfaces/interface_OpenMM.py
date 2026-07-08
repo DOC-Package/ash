@@ -3442,6 +3442,7 @@ def OpenMM_MD(fragment=None, theory=None, timestep=0.001, simulation_steps=None,
               force_periodic=None, periodic_cell_dimensions=None,
               anderson_thermostat=False, platform='CPU', constraints=None, restraints=None,
               enforcePeriodicBox=True, special_wrapping=False, special_wrapping_updatepos=False, wrapping_atoms=None, 
+              save_wrapped_traj=False,
               dummyatomrestraint=False, center_on_atoms=None, solute_indices=None,
               datafilename=None, dummy_MM=False, plumed_object=None, add_centerforce=False,
               centerforce_atoms=None, centerforce_constant=1.0, centerforce_distance=10.0, centerforce_center=None,
@@ -3455,7 +3456,8 @@ def OpenMM_MD(fragment=None, theory=None, timestep=0.001, simulation_steps=None,
                         force_periodic=force_periodic, periodic_cell_dimensions=periodic_cell_dimensions,
                         coupling_frequency=coupling_frequency, anderson_thermostat=anderson_thermostat, platform=platform,
                         enforcePeriodicBox=enforcePeriodicBox, special_wrapping=special_wrapping, special_wrapping_updatepos=special_wrapping_updatepos, 
-                        wrapping_atoms=wrapping_atoms, dummyatomrestraint=dummyatomrestraint, center_on_atoms=center_on_atoms, solute_indices=solute_indices,
+                        wrapping_atoms=wrapping_atoms, save_wrapped_traj=save_wrapped_traj,
+                        dummyatomrestraint=dummyatomrestraint, center_on_atoms=center_on_atoms, solute_indices=solute_indices,
                         datafilename=datafilename, dummy_MM=dummy_MM, printlevel=printlevel, hydrogenmass=hydrogenmass,
                         plumed_object=plumed_object, add_centerforce=add_centerforce,trajfilename=trajfilename,
                         centerforce_atoms=centerforce_atoms, centerforce_constant=centerforce_constant,
@@ -3485,6 +3487,7 @@ class OpenMM_MDclass:
                  anderson_thermostat=False, hydrogenmass=1.5, constraints=None, restraints=None,
                  force_periodic=False, periodic_cell_dimensions=None,
                  enforcePeriodicBox=True, special_wrapping=False, special_wrapping_updatepos=False, wrapping_atoms=None,
+                 save_wrapped_traj=False,
                  dummyatomrestraint=False, center_on_atoms=None, solute_indices=None,
                  datafilename=None, dummy_MM=False, plumed_object=None, add_centerforce=False,
                  centerforce_atoms=None, centerforce_constant=1.0, centerforce_distance=10.0, centerforce_center=None,
@@ -3512,11 +3515,12 @@ class OpenMM_MDclass:
         #Specialatoms and specialtraj_frequency for special printing
         self.specialatoms=specialatoms
         self.specialtraj_frequency=specialtraj_frequency
+        self.save_wrapped_traj=save_wrapped_traj
 
         #Delete previous special and wrapping trajectory file
         if os.path.exists("wrapped_special_traj.xyz"):
             os.remove("wrapped_special_traj.xyz")
-        if os.path.exists("OpenMMMD_traj_wrapped.xyz"):
+        if self.save_wrapped_traj is True and os.path.exists("OpenMMMD_traj_wrapped.xyz"):
             os.remove("OpenMMMD_traj_wrapped.xyz")
 
         # Distinguish between OpenMM theory QM/MM theory or QM theory
@@ -3723,6 +3727,7 @@ class OpenMM_MDclass:
         print("special_wrapping:", self.special_wrapping)
         print("special_wrapping_updatepos:", special_wrapping_updatepos)
         print("wrapping_atoms:", self.wrapping_atoms)
+        print("save_wrapped_traj:", self.save_wrapped_traj)
         print("")
 
         if self.openmmobject.autoconstraints is None:
@@ -4394,7 +4399,7 @@ class OpenMM_MDclass:
                 #Printing step-info or write-trajectory at regular intervals
                 if step % self.traj_frequency == 0:
 
-                    if self.printlevel >= 2:
+                    if self.save_wrapped_traj is True:
                         print("Writing wrapped coords to trajfile: OpenMMMD_traj_wrapped.xyz (for debugging)")
                         write_xyzfile(self.fragment.elems, current_coords, "OpenMMMD_traj_wrapped", printlevel=1, writemode='a')
 
@@ -4498,7 +4503,7 @@ class OpenMM_MDclass:
 
                     #print("QM/MM step. Writing unwrapped to trajfile: OpenMMMD_traj_unwrapped.xyz")
                     #write_xyzfile(self.fragment.elems, current_coords, "OpenMMMD_traj_unwrapped", printlevel=1, writemode='a')
-                    if self.printlevel >= 2:
+                    if self.save_wrapped_traj is True:
                         print("Writing wrapped coords to trajfile: OpenMMMD_traj_wrapped.xyz (for debugging)")
                         write_xyzfile(self.fragment.elems, current_coords, "OpenMMMD_traj_wrapped", printlevel=1, writemode='a')
 
@@ -4804,7 +4809,7 @@ class OpenMM_MDclass:
                     if self.trajectory_file_option =="XYZ":
                         write_xyzfile(self.fragment.elems, current_coords, "OpenMMMD_traj", printlevel=1, writemode='a')
 
-                    if self.printlevel >= 2:
+                    if self.save_wrapped_traj is True:
                         print("Writing wrapped coords to trajfile: OpenMMMD_traj_wrapped.xyz (for debugging)")
                         write_xyzfile(self.fragment.elems, current_coords, "OpenMMMD_traj_wrapped", printlevel=1, writemode='a')
 
@@ -5215,6 +5220,7 @@ def OpenMM_metadynamics(fragment=None, theory=None, timestep=0.001, simulation_s
               anderson_thermostat=False, restraints=None, flatbottom_restraint_CV1=None, flatbottom_restraint_CV2=None,
               funnel_restraint=None, funnel_parameters=None,
               enforcePeriodicBox=True, special_wrapping=False, special_wrapping_updatepos=False, wrapping_atoms=None,
+              save_wrapped_traj=False,
               dummyatomrestraint=False, center_on_atoms=None, solute_indices=None,
               datafilename=None, dummy_MM=False, add_centerforce=False,
               centerforce_atoms=None, centerforce_distance=10.0, centerforce_constant=1.0, centerforce_center=None,
@@ -5267,6 +5273,7 @@ def OpenMM_metadynamics(fragment=None, theory=None, timestep=0.001, simulation_s
                         coupling_frequency=coupling_frequency, anderson_thermostat=anderson_thermostat,
                         enforcePeriodicBox=enforcePeriodicBox, special_wrapping=special_wrapping, 
                         special_wrapping_updatepos=special_wrapping_updatepos, wrapping_atoms=wrapping_atoms,
+                        save_wrapped_traj=save_wrapped_traj,
                         dummyatomrestraint=dummyatomrestraint, center_on_atoms=center_on_atoms, solute_indices=solute_indices,
                         datafilename=datafilename, dummy_MM=dummy_MM, platform=platform, hydrogenmass=hydrogenmass,
                         add_centerforce=add_centerforce,trajfilename=trajfilename, chkfile=chkfile, statefile=statefile,
@@ -5385,6 +5392,7 @@ def OpenMM_MD_plumed(fragment=None, theory=None, timestep=0.001, simulation_step
               coupling_frequency=1, charge=None, mult=None, platform='CPU', hydrogenmass=1.5, constraints=None,
               anderson_thermostat=False, restraints=None, 
               enforcePeriodicBox=True, special_wrapping=False, special_wrapping_updatepos=False, wrapping_atoms=None, 
+              save_wrapped_traj=False,
               dummyatomrestraint=False, center_on_atoms=None, solute_indices=None,
               datafilename=None, dummy_MM=False, add_centerforce=False,
               centerforce_atoms=None, centerforce_distance=10.0, centerforce_constant=1.0, centerforce_center=None,
@@ -5407,7 +5415,8 @@ def OpenMM_MD_plumed(fragment=None, theory=None, timestep=0.001, simulation_step
                         barostat=barostat, pressure=pressure, trajectory_file_option=trajectory_file_option, 
                         coupling_frequency=coupling_frequency, anderson_thermostat=anderson_thermostat,
                         enforcePeriodicBox=enforcePeriodicBox, special_wrapping=special_wrapping, 
-                        special_wrapping_updatepos=special_wrapping_updatepos, wrapping_atoms=wrapping_atoms, 
+                        special_wrapping_updatepos=special_wrapping_updatepos, wrapping_atoms=wrapping_atoms,
+                        save_wrapped_traj=save_wrapped_traj,
                         dummyatomrestraint=dummyatomrestraint, center_on_atoms=center_on_atoms, solute_indices=solute_indices,
                         datafilename=datafilename, dummy_MM=dummy_MM, platform=platform, hydrogenmass=hydrogenmass,
                         add_centerforce=add_centerforce,trajfilename=trajfilename,
